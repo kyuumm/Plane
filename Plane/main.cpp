@@ -8,6 +8,7 @@ int main() {
 
 	loadimage(&img_bk, "asset/image/background.png");
 	putimage(0, 0, &img_bk);
+	//test
 	getchar();
 	return 0;
 }
