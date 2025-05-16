@@ -7,14 +7,24 @@
 
 #include<time.h>
 
+
 #define BULLET_NUM 30//子弹数量
+#define ENEMY_NUM 7//敌机数量
+
+#define ENEMY_SPEED 3
+#define ENEMY_BULLET_NUM 10
 //**********************************视频进度：0:30:30
 //*******************************
 
 IMAGE img_bk;
 IMAGE img_gamer[2];//飞机图片
 IMAGE img_bullet[2];//子弹图片
+IMAGE img_enemy[2];//敌机图片
 
+IMAGE img_btn_finish;
+IMAGE img_bk_mask;
+
+bool isPaused = false;
 //自定义定时器
 bool Timer(int ms, int id) {
 	static int start[5];
@@ -37,12 +47,20 @@ struct Plane {
 	int frame = 0;//当前帧
 }gamer;
 
+Plane enemy[ENEMY_NUM]{
+
+};
+
+
+
 struct Bullet {
 	int x;
 	int y;
 	bool isDie;
 	int frame = 0;//当前帧
 }bullet[BULLET_NUM] = { 0 };
+
+Bullet enemy_bullets[ENEMY_BULLET_NUM];
 
 void createBullet() {
 	for (int i = 0; i < BULLET_NUM; i++)
@@ -74,6 +92,19 @@ void moveBullet() {
 	}
 }
 
+//敌机
+void createEnemy() {
+	for (int i = 0; i < ENEMY_NUM; i++)
+	{
+		if (enemy[i].isDie) {
+			enemy[i].x = rand() % getwidth();
+			enemy[i].y = -img_enemy->getheight();
+
+			enemy[i].isDie = false;
+			break;
+		}
+	}
+}
 
 void loadResource() {
 	loadimage(&img_bk, "asset/image/background.png");
@@ -87,6 +118,13 @@ void loadResource() {
 	//加载子弹
 	loadimage(img_bullet + 0, "asset/image/bullet1.png");
 	loadimage(img_bullet + 1, "asset/image/bullet2.png");
+
+	//加载敌机
+	loadimage(img_enemy + 0, "asset/image/enemy0.png");
+	loadimage(img_enemy + 1, "asset/image/enemy1.png");
+
+	loadimage(&img_btn_finish, "asset/image/btn_finish.png");
+	loadimage(&img_bk_mask, "asset/image/background_mask.png");
 }
 
 //初始化飞机
@@ -108,6 +146,11 @@ void plane_draw(Plane* pthis) {
 }
 //移动飞机  
 void plane_move(Plane* pthis) {  
+
+	if (GetAsyncKeyState(VK_ESCAPE)) {
+		isPaused = !isPaused;
+		Sleep(200);
+	}
 
 	int speed = 3;
 
@@ -133,6 +176,54 @@ void plane_move(Plane* pthis) {
    }
 }
 
+//敌机移动
+void enemy_move() {
+	for (int i = 0; i < ENEMY_NUM; i++)
+	{
+		if (!enemy[i].isDie) {
+
+			enemy[i].y += ENEMY_SPEED;
+
+			if (enemy[i].y > getheight()) {
+				enemy[i].isDie = true;
+			}
+		}
+	}
+}
+//敌机发射子弹
+
+void enemy_create_bullet() {
+	for (int i = 0; i < ENEMY_NUM; i++)
+	{
+		if (!enemy[i].isDie && rand() % 20 == 0) {
+			for (int j = 0; j < ENEMY_BULLET_NUM; j++)
+			{
+				if (enemy_bullets[j].isDie) {
+					enemy_bullets[j].x = enemy[i].x + img_enemy->getwidth() / 2;
+					enemy_bullets[j].y = enemy[i].y + img_enemy->getheight();
+					enemy_bullets[j].isDie = false;
+					break;
+				}
+			}
+		}
+	}
+}
+//敌机子弹移动//
+
+void moveEnemyBullet() {
+	for (int i = 0; i < ENEMY_BULLET_NUM; i++)
+	{
+		if (!enemy_bullets[i].isDie) {
+			enemy_bullets[i].y += 5;
+
+			if (enemy_bullets[i].y>getheight())
+			{
+				enemy_bullets[i].isDie = true;
+			}
+		}
+	}
+}
+
 //**********************所有的数据初始化
 void init() {
 	loadResource();
@@ -147,7 +238,16 @@ void init() {
 	for (int i = 0;i < BULLET_NUM ; i++) {
 		bullet[i].isDie = true;
 	}
-
+	//初始化敌机
+	for (int i = 0; i < ENEMY_NUM; i++)
+	{
+		enemy[i].isDie = true;
+	}
+	//初始化敌机子弹
+	for (int i = 0; i < ENEMY_BULLET_NUM; i++)
+	{
+		enemy_bullets[i].isDie = true;
+	}
 }
 
 //*********************所有的资源释放
@@ -170,27 +270,73 @@ void draw() {
 		}
 
 	}
+
+	//输出敌机
+	for (int i = 0; i < ENEMY_NUM; i++)
+	{
+		if (!enemy[i].isDie) {
+			drawImg(enemy[i].x, enemy[i].y, img_enemy + 0);
+		}
+	}
+	//输出敌机子弹
+	for (int i = 0; i < ENEMY_BULLET_NUM; i++)
+	{
+		if (!enemy_bullets[i].isDie) {
+			drawImg(enemy_bullets[i].x, enemy_bullets[i].y, img_bullet + 1);
+		}
+	}
+
+
 }
 
 
 int main() {
+
+
 	initgraph(480,850);
 	init();
 
 
 
+
+	
 	while(true){
-		int startTime = clock();//获取程序执行到调用函数经过的毫秒数
-		draw();
+		
 
-		plane_move(&gamer);
-		moveBullet();
+		if (GetAsyncKeyState(VK_ESCAPE)) {
+			isPaused = !isPaused;
+			Sleep(200);
+		}
+		//暂停
+		if (isPaused) {
 
-		int frameTime = clock() - startTime;//获取程序执行到调用函数经过的毫秒数
 
-		//一帧应该执行的时间大于当前帧执行的时间
-		if (1000 / 60 - frameTime > 0) {
-			Sleep(1000 / 60 - frameTime);
+
+			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_finish);
+			
+		}
+
+		if (!isPaused) {
+			int startTime = clock();//获取程序执行到调用函数经过的毫秒数
+			draw();
+
+			plane_move(&gamer);
+			moveBullet();
+
+			if (Timer(400, 0)) {
+				createEnemy();
+			}
+	
+			enemy_move();
+			enemy_create_bullet();
+			moveEnemyBullet();
+
+			int frameTime = clock() - startTime;//获取程序执行到调用函数经过的毫秒数
+
+			//一帧应该执行的时间大于当前帧执行的时间
+			if (1000 / 60 - frameTime > 0) {
+				Sleep(1000 / 60 - frameTime);
+			}
 		}
 	}
 

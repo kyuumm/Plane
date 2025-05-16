@@ -1,0 +1,11 @@
+*cd 项目目录/右键-查看更多选项-gitbash here
+*git init
+
+*git remote add origin https://github.com/kyuumm/Plane.git
+//以上是项目没有创建仓库，上传github的操作
+//以下是已经传过的往后操作
+***git add .
+
+***git commit -m "补充的信息"
+
+***git push（左边是重复的操作）（git push -u origin master//这个是第一次的操作） 
