@@ -15,6 +15,9 @@
 #define ENEMY_BULLET_NUM 10
 
 #define GAMER_HEART 3
+
+enum GameState{MENU,PLAYING,GAME_OVER } ;
+GameState gameState = MENU;
 //**********************************视频进度：0:30:30
 //*******************************
 
@@ -29,7 +32,8 @@ IMAGE img_bk_mask;
 IMAGE img_btn_die;
 
 IMAGE img_heart;
-
+IMAGE img_name;
+IMAGE img_btn;
 
 
 
@@ -143,6 +147,9 @@ void loadResource() {
 	loadimage(&img_btn_die, "asset/image/btn_die.png");
 
 	loadimage(&img_heart, "asset/image/heart.png");
+
+	loadimage(&img_name, "asset/image/name.png");
+	loadimage(&img_btn, "asset/image/button_nor.png");
 }
 
 //初始化飞机
@@ -300,6 +307,11 @@ void collisionDetection(Plane *pthis) {
 void init() {
 	loadResource();
 
+	gamer.score = 0;
+	gamer.gamerHeart = GAMER_HEART;
+
+	isPaused = false;
+
 	int planeW = img_gamer[0].getwidth();
 	int planeH = img_gamer[0].getheight();
 
@@ -379,58 +391,100 @@ int main() {
 	init();
 
 
-
+	BeginBatchDraw();//开启双缓冲
 
 	
 	while(true){
-		
+		if (gameState==MENU)
+		{	
+			putimage(0, 0, &img_bk);
 
-		if (GetAsyncKeyState(VK_ESCAPE)) {
-			isPaused = !isPaused;
-			Sleep(200);
-		}
-		//暂停
+			drawImg((getwidth() - img_name.getwidth())/2, 50, &img_name);
 
+			/*drawImg((getwidth() - img_btn.getwidth()) / 2, (getheight() - img_btn.getheight()) / 2, &img_btn);*/
+			outtextxy((getwidth() - img_btn.getwidth()) / 2, (getheight() - img_btn.getheight()) / 2, "按Enter开始游戏");
 
-		if (!isPaused&&!gamer.isDie) {
-			int startTime = clock();//获取程序执行到调用函数经过的毫秒数
-			draw(&gamer);
+			if (GetAsyncKeyState(VK_RETURN)) {
+				init();
 
-			plane_move(&gamer);
-			moveBullet();
-
-			collisionDetection(&gamer);
-
-			if (Timer(400, 0)) {
-				createEnemy();
+				gameState = PLAYING;
+				Sleep(200);
 			}
+
+
+		}
+		 
+		else if (gameState == PLAYING) {
+				if (GetAsyncKeyState(VK_ESCAPE)) {
+					isPaused = !isPaused;
+					Sleep(200);
+				}
+				//暂停
+
+
+				if (!isPaused&&!gamer.isDie) {
+					int startTime = clock();//获取程序执行到调用函数经过的毫秒数
+					draw(&gamer);
+
+					plane_move(&gamer);
+					moveBullet();
+
+					collisionDetection(&gamer);
+
+					if (Timer(400, 0)) {
+						createEnemy();
+					}
 	
-			enemy_move();
-			enemy_create_bullet();
-			moveEnemyBullet();
+					enemy_move();
+					enemy_create_bullet();
+					moveEnemyBullet();
 
-			int frameTime = clock() - startTime;//获取程序执行到调用函数经过的毫秒数
+					int frameTime = clock() - startTime;//获取程序执行到调用函数经过的毫秒数
 
-			//一帧应该执行的时间大于当前帧执行的时间
-			if (1000 / 60 - frameTime > 0) {
-				Sleep(1000 / 60 - frameTime);
-			}
+					//一帧应该执行的时间大于当前帧执行的时间
+					if (1000 / 60 - frameTime > 0) {
+						Sleep(1000 / 60 - frameTime);
+					}
+				}
+
+				if (isPaused&&gamer.isDie) {
+
+					gameState = GAME_OVER;
+					
+
+
+			
+				}
+				if (isPaused&&!gamer.isDie) {
+
+			
+
+					drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_finish);
+			
+				}
 		}
-
-		if (isPaused&&gamer.isDie) {
-
-
-
+		else if (gameState == GAME_OVER) {
+			putimage(0, 0, &img_bk);
 			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_die);
-			
-		}
-		if (isPaused&&!gamer.isDie) {
 
-			
+			char scoreText[50];
+			sprintf_s(scoreText, "Score:%d", gamer.score);
 
-			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_finish);
-			
+			outtextxy(170, 250, scoreText);
+			outtextxy(170, 300, "按Enter重新开始游戏");
+
+			if (GetAsyncKeyState(VK_RETURN)) {
+				init();
+				gameState = PLAYING;
+
+
+				isPaused = false;
+				Sleep(200);
+			}
+
 		}
+		FlushBatchDraw();
+	
 	
 	}
 
@@ -441,6 +495,9 @@ int main() {
 
 
 	getchar();//按任意键结束
+
+	EndBatchDraw();
+	closegraph();
 
 	return 0;
 }
