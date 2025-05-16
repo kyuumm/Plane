@@ -13,6 +13,8 @@
 
 #define ENEMY_SPEED 3
 #define ENEMY_BULLET_NUM 10
+
+#define GAMER_HEART 3
 //**********************************视频进度：0:30:30
 //*******************************
 
@@ -23,6 +25,14 @@ IMAGE img_enemy[2];//敌机图片
 
 IMAGE img_btn_finish;
 IMAGE img_bk_mask;
+
+IMAGE img_btn_die;
+
+IMAGE img_heart;
+
+
+
+
 
 bool isPaused = false;
 //自定义定时器
@@ -42,6 +52,10 @@ bool Timer(int ms, int id) {
 struct Plane {
 	int x;
 	int y;
+
+	int gamerHeart=GAMER_HEART;
+	int score = 0;
+
 	bool isDie;
 
 	int frame = 0;//当前帧
@@ -125,6 +139,10 @@ void loadResource() {
 
 	loadimage(&img_btn_finish, "asset/image/btn_finish.png");
 	loadimage(&img_bk_mask, "asset/image/background_mask.png");
+
+	loadimage(&img_btn_die, "asset/image/btn_die.png");
+
+	loadimage(&img_heart, "asset/image/heart.png");
 }
 
 //初始化飞机
@@ -141,6 +159,7 @@ void plane_init(Plane* pthis, int x, int y) {
 //绘制飞机
 void plane_draw(Plane* pthis) {
 	drawImg(pthis->x, pthis->y, img_gamer + pthis->frame);
+
 	pthis->frame=(pthis->frame+1)%2;
 
 }
@@ -190,8 +209,8 @@ void enemy_move() {
 		}
 	}
 }
-//敌机发射子弹
 
+//敌机发射子弹
 void enemy_create_bullet() {
 	for (int i = 0; i < ENEMY_NUM; i++)
 	{
@@ -208,8 +227,8 @@ void enemy_create_bullet() {
 		}
 	}
 }
-//敌机子弹移动//
 
+//敌机子弹移动//
 void moveEnemyBullet() {
 	for (int i = 0; i < ENEMY_BULLET_NUM; i++)
 	{
@@ -222,6 +241,59 @@ void moveEnemyBullet() {
 			}
 		}
 	}
+}
+
+//碰撞检测
+void collisionDetection(Plane *pthis) {
+	//敌机打我
+	for (int i = 0; i < ENEMY_BULLET_NUM; i++)
+	{
+		if (!enemy_bullets[i].isDie){
+			int bx = enemy_bullets[i].x;
+			int by = enemy_bullets[i].y;
+			
+			if (bx>=gamer.x&&bx<=gamer.x+img_gamer->getwidth()&&
+				by>=gamer.y&&by<=gamer.y+img_gamer->getheight())
+			{
+				enemy_bullets[i].isDie = true;
+
+				pthis->gamerHeart--;
+				if (pthis->gamerHeart<=0)
+				{
+					gamer.isDie = true;
+					isPaused = true;
+				}
+
+
+			}
+		}
+	}
+	//我打敌机
+	for (int i = 0; i < BULLET_NUM; i++)
+	{
+		if (!bullet[i].isDie) {
+			int ax = bullet[i].x;
+			int ay = bullet[i].y;
+
+			for (int j = 0; j < ENEMY_NUM; j++)
+			{
+				if (ax >= enemy[j].x && ax <= enemy[j].x + img_enemy->getwidth() &&
+					ay >= enemy[j].y && ay <= enemy[j].y + img_enemy->getheight())
+				{
+					enemy_bullets[j].isDie = true;
+					enemy[j].isDie = true;
+
+					bullet[i].isDie = true;
+
+					pthis->score++;
+
+				}
+			}
+
+		}
+		
+	}
+
 }
 
 //**********************所有的数据初始化
@@ -253,7 +325,7 @@ void init() {
 //*********************所有的资源释放
 
 //*********************绘制界面
-void draw() {
+void draw(Plane*pthis) {
 		//输出图片
 	putimage(0, 0, &img_bk);
 
@@ -285,7 +357,17 @@ void draw() {
 			drawImg(enemy_bullets[i].x, enemy_bullets[i].y, img_bullet + 1);
 		}
 	}
+	//输出生命值
+	for (int i = 0; i < pthis->gamerHeart; i++)
+	{
+		int heartX = 10 + i * (img_heart.getwidth() + 5);
+		int heartY = getheight() - img_heart.getheight() - 10;
+		drawImg(heartX, heartY, &img_heart);
+	}
 
+	char scoreText[50];
+	sprintf_s(scoreText, "Score:%d", pthis->score);
+	outtextxy(10, 10, scoreText);
 
 }
 
@@ -308,20 +390,16 @@ int main() {
 			Sleep(200);
 		}
 		//暂停
-		if (isPaused) {
 
 
-
-			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_finish);
-			
-		}
-
-		if (!isPaused) {
+		if (!isPaused&&!gamer.isDie) {
 			int startTime = clock();//获取程序执行到调用函数经过的毫秒数
-			draw();
+			draw(&gamer);
 
 			plane_move(&gamer);
 			moveBullet();
+
+			collisionDetection(&gamer);
 
 			if (Timer(400, 0)) {
 				createEnemy();
@@ -338,6 +416,22 @@ int main() {
 				Sleep(1000 / 60 - frameTime);
 			}
 		}
+
+		if (isPaused&&gamer.isDie) {
+
+
+
+			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_die);
+			
+		}
+		if (isPaused&&!gamer.isDie) {
+
+			
+
+			drawImg((getwidth() - img_btn_finish.getwidth()) / 2, (getheight() - img_btn_finish.getheight()) / 2, &img_btn_finish);
+			
+		}
+	
 	}
 
 
